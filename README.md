@@ -2,7 +2,7 @@
 
 This is a simple memory allocator implementation in C, providing functionalities for dynamic memory allocation and deallocation. The allocator includes os_malloc, os_calloc, os_realloc, and os_free functions.
 
-Functions
+##Functions
 
 os_malloc(size_t size)
 Allocates size bytes and returns a pointer to the allocated memory. Chunks smaller than MMAP_THRESHOLD are allocated with brk(), while larger chunks use mmap(). The memory is uninitialized. Passing 0 as size will return NULL.
@@ -16,7 +16,7 @@ Changes the size of the memory block pointed to by ptr to size bytes. If the siz
 os_free(void *ptr)
 Frees memory previously allocated by os_malloc(), os_calloc(), or os_realloc(). os_free() will mark the memory as free and reuse it in future allocations. In the case of mapped memory blocks, os_free() will call munmap().
 
-General
+##General
 
 Allocations that increase the heap size will only expand the last block if it is free.
 sbrk() can be used instead of brk(), as on Linux sbrk() is implemented using brk().
@@ -24,7 +24,7 @@ Do NOT use mremap().
 Check the error code returned by every syscall using the DIE() macro.
 Implementation
 
-Memory Alignment
+##Memory Alignment
 Allocated memory is aligned to 8 bytes as required by 64-bit systems.
 Block Reuse
 Memory blocks are managed using the struct block_meta, which includes size, status, previous, and next pointers.
