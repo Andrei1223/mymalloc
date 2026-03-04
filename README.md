@@ -41,7 +41,6 @@ struct block_meta {
 	struct block_meta *prev;
 	struct block_meta *next;
 };
-
 ```
 
 ### Strategies
@@ -60,7 +59,6 @@ Navigate to the `src/` directory and run:
 
 ```
 make
-
 ```
 
 This produces `libosmem.so`.
@@ -79,7 +77,6 @@ To run with memory leak detection:
 
 ```
 python3 run_tests.py -m
-
 ```
 
 ### Coding Style
