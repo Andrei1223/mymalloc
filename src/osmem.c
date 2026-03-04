@@ -5,8 +5,19 @@
 // include the list header
 #include "memory.h"
 
+void *brk(size_t num);
+
 // variable that sees if the list is initialized
-int init = 0;
+int init;
+
+// function that returns the minimum value
+size_t min(size_t a, size_t b)
+{
+	if (a > b)
+		return b;
+
+	return a;
+}
 
 void *os_malloc(size_t size)
 {
@@ -20,9 +31,12 @@ void *os_malloc(size_t size)
 		init_list();
 		init = 1;
 	}
+	void *addr = NULL;
 
+	size = calculate_size(size);
 	// get the address of the structure
-	void *addr = find_best_block(size);
+	if (size + SIZE_STRUCT <= MMAP_THRESHOLD)
+		addr = find_best_block(size);
 
 	// if it is needed to allocate more to the heap
 	if (addr == NULL) {
@@ -79,10 +93,12 @@ void *os_calloc(size_t nmemb, size_t size)
 		init_list();
 		init = 1;
 	}
-
+	void *addr = NULL;
 	size_t total_size = size * nmemb, i;
+
 	// get the address of the structure
-	void *addr = find_best_block(total_size);
+	if (calculate_size(total_size + SIZE_STRUCT) <= page_size)
+		addr = find_best_block(total_size);
 
 	// if it is needed to allocate more to the heap
 	if (addr == NULL) {
@@ -128,10 +144,10 @@ void *os_realloc(void *ptr, size_t size)
 	void *addr = NULL;
 
 	// for a mmap block
-	if (item->status == STATUS_MAPPED) {
+	if (item->status == STATUS_MAPPED || size >= MMAP_THRESHOLD) {
 		// relocate the block
 		addr = os_malloc(size);
-		mem_cpy(addr, ptr, size);
+		mem_cpy(addr, ptr, min(item->size, size));
 		os_free(ptr); // free the old block
 		return addr;
 	}
@@ -142,9 +158,9 @@ void *os_realloc(void *ptr, size_t size)
 		if (item->size - size >= SIZE_STRUCT + calculate_size(1)) {
 			// addr has the free block
 			addr = (void *)split_block(item, size);
-
 			// get the actual block
 			struct block_meta *aux = (struct block_meta *)(addr);
+
 			addr = aux->prev;
 			// return the address of the payload
 			return (char *)addr + SIZE_STRUCT;
@@ -153,14 +169,11 @@ void *os_realloc(void *ptr, size_t size)
 		return ptr;
 	}
 
-
 	// check if it is the last block on the heap
 	if (item->next == NULL || item->next->status == STATUS_MAPPED) {
-		printf("%ld %ld\n", item->size, size);
 		resize_last_block(item, size);
-		return item;
+		return (char *)item + SIZE_STRUCT;
 	}
-
 	// traverse the next free nodes
 	struct block_meta *block = item->next;
 
@@ -171,19 +184,13 @@ void *os_realloc(void *ptr, size_t size)
 	}
 
 	// check the size of the block
-	if (item->size >= size)
+	if (item->size >= calculate_size(size))
 		// return the address of the payload
 		return ptr;
 
-
-	// calculate the minimum size
-	if (item->size < minim)
-		minim = item->size;
-
 	// relocate the block
 	addr = os_malloc(size);
-	mem_cpy(addr, ptr, minim);
+	mem_cpy(addr, ptr, min(minim, item->size));
 	os_free(ptr); // free the old block
-
 	return addr;
 }

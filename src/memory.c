@@ -3,7 +3,7 @@
 #include "block_meta.h"
 
 void *sbrk(int incr);
-// TODO meybe infinite loop at calloc for block reuse////////////
+
 // function to calculate the size using padding for 8 bits
 size_t calculate_size(size_t size)
 {
@@ -44,8 +44,7 @@ void *allocate_memory(size_t size, size_t limit)
 
 		// add the first block
 		add_block(addr, size, STATUS_ALLOC);
-
-		if (actual_size == size)
+		if (actual_size != size)
 			// add the second block
 			add_block((void *)((char *)addr + size), actual_size - size, STATUS_FREE);
 
@@ -84,6 +83,7 @@ void add_block(void *addr, size_t size, int stat)
 
 	// create a new block_meta from the provided address
 	struct block_meta *new_block = (struct block_meta *)addr;
+
 	new_block->next = NULL;
 	new_block->size = size - SIZE_STRUCT;
 	new_block->status = stat;
@@ -131,8 +131,8 @@ void add_block(void *addr, size_t size, int stat)
 struct block_meta *split_block(struct block_meta *item, size_t new_size)
 {
 	// get the new node
-	struct block_meta *aux = (struct block_meta *)((char *)item + SIZE_STRUCT + new_size);
-
+	struct block_meta *aux = (struct block_meta *)((char *)item + SIZE_STRUCT + calculate_size(new_size));
+	//printf("%x\n", aux);
 	if (item->next)
 		item->next->prev = aux;
 
@@ -144,20 +144,21 @@ struct block_meta *split_block(struct block_meta *item, size_t new_size)
 	// compute the new size of the free block
 	aux->size = calculate_size(item->size) - new_size - SIZE_STRUCT;
 	aux->status = STATUS_FREE;
-	printf("%ld\n", aux->size);
+
 	item->size = new_size;
+	coalesce_blocks(aux, STATUS_FREE);
 	// the function returns the free block of size aux->size
 	return aux;
 }
 
 // function that returns a pointer of the last block on the heap
-struct block_meta *last_block_heap()
+struct block_meta *last_block_heap(void)
 {
 	// init the pointer to traverse the list
 	struct block_meta *item = &mem_list;
 
 	// traverse the list
-	while (item->next && item->status != STATUS_MAPPED)
+	while (item->next && item->next->status != STATUS_MAPPED)
 		item = item->next;
 
 	if (item->status == STATUS_FREE && item != &mem_list)
@@ -173,6 +174,9 @@ void resize_last_block(struct block_meta *block, size_t new_size)
 	// new_size doesn t contain the SIZE_STRUCT value
 	new_size = calculate_size(new_size);
 
+	if (new_size >= MMAP_THRESHOLD)
+		return;
+
 	void *res;
 	// if extending the last block
 	if (new_size > block->size) {
@@ -186,7 +190,6 @@ void resize_last_block(struct block_meta *block, size_t new_size)
 	// check for errors
 	if (res == (void *)-1)
 		DIE(1, "sbrk");
-
 
 	// modify the size of the last block
 	block->size = new_size;
@@ -204,12 +207,15 @@ void *find_best_block(size_t size_payload)
 
 	// initialize variables to keep track of the best block
 	struct block_meta *best_block = NULL;
-	size_t min_size = 0x20002; // TODO modify
+	size_t min_size = 0xfffff02;
 
 	// traverse the list of free memory blocks
 	struct block_meta *current = mem_list.next;
 
-	while (current != NULL) {
+	while (current != NULL && current->status != STATUS_MAPPED) {
+		if (current->status == STATUS_FREE && current->next && current->next->status == STATUS_FREE)
+			coalesce_blocks(current, STATUS_FREE);
+
 		// check if the block is free and its size is sufficient for the payload
 		if (current->status == STATUS_FREE && current->size >= size_payload) {
 			// update the best block if this one is smaller

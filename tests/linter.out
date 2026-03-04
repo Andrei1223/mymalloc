@@ -1,0 +1,16 @@
+cd .. && checkpatch.pl -f src/*.c tests/snippets/*.c
+Must be run from the top-level dir. of a kernel tree
+Makefile:37: recipe for target 'lint' failed
+make: [lint] Error 2 (ignored)
+cd .. && checkpatch.pl -f checker/*.sh tests/*.sh
+Must be run from the top-level dir. of a kernel tree
+Makefile:37: recipe for target 'lint' failed
+make: [lint] Error 2 (ignored)
+cd .. && cpplint --recursive src/ tests/
+/bin/sh: 1: cpplint: not found
+Makefile:37: recipe for target 'lint' failed
+make: [lint] Error 127 (ignored)
+cd .. && shellcheck checker/*.sh tests/*.sh
+/bin/sh: 1: shellcheck: not found
+Makefile:37: recipe for target 'lint' failed
+make: [lint] Error 127 (ignored)

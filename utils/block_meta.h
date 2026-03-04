@@ -24,8 +24,6 @@ struct block_meta {
 	struct block_meta *next;
 };
 
-struct block_meta mem_list;
-
 /* Block metadata status values */
 #define STATUS_FREE   0
 #define STATUS_ALLOC  1
